@@ -10,15 +10,25 @@
 
 #import "MasterViewController.h"
 #import <RestKit/RestKit.h>
+#import "MBProgressHUD.h"
 #import "Venue.h"
 #import "Location.h"
 #import "VenueCell.h"
 #import "Stats.h"
+#import "DetailViewController.h"
+#import <INTULocationManager/INTULocationManager.h>
+
 
 
 @interface MasterViewController () {}
 
 @property (nonatomic, strong) NSArray *venues;
+@property (assign, nonatomic) INTULocationAccuracy desiredAccuracy;
+@property (assign, nonatomic) NSTimeInterval timeout;
+@property (nonatomic, strong) NSString *latLongCurrent;
+@property (nonatomic, strong) NSString *latLong;
+
+@property (assign, nonatomic) INTULocationRequestID locationRequestID;
     
 
 @end
@@ -34,7 +44,15 @@
 {
     [super viewDidLoad];
     [self configureRestKit];
-    [self loadVenues];
+    
+    self.desiredAccuracy = INTULocationAccuracyCity;
+    self.timeout = 10.0;
+    self.locationRequestID = NSNotFound;
+    
+    [self lookupCurrentLocation];
+    NSLog(@"--> %@", self.latLongCurrent);
+    
+    
     
     
     
@@ -69,12 +87,51 @@
     [venueMapping addPropertyMapping:[RKRelationshipMapping relationshipMappingFromKeyPath:@"stats" toKeyPath:@"stats" withMapping:statsMapping]];
     
 }
-
+- (void)lookupCurrentLocation{
+    __weak __typeof(self) weakSelf = self;
+    INTULocationManager *locMgr = [INTULocationManager sharedInstance];
+    MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:self.view animated:YES];
+    hud.mode = MBProgressHUDModeIndeterminate;
+    hud.labelText = @"Searching..";
+    
+    self.locationRequestID = [locMgr requestLocationWithDesiredAccuracy:INTULocationAccuracyHouse                                                                timeout:10.0
+        delayUntilAuthorized:YES
+        block:
+                              ^(CLLocation *currentLocation, INTULocationAccuracy achievedAccuracy, INTULocationStatus status) {
+                                  [hud show:YES];
+                                  __typeof(weakSelf) strongSelf = weakSelf;
+                                  
+                                  if (status == INTULocationStatusSuccess) {
+                                    
+                                      NSLog(@"CurrentLocation -> (%f,%f)", currentLocation.coordinate.latitude, currentLocation.coordinate.longitude);
+                                      self.latLongCurrent = [NSString stringWithFormat:@"%f,%f",currentLocation.coordinate.latitude, currentLocation.coordinate.longitude];
+                                      [self loadVenues];
+                                      [hud hide:YES];
+                                    
+                                      
+                                      //NSLog(@"LatLongCurrent -> %@",self.latLongCurrent);
+                                  }
+                                  else if (status == INTULocationStatusTimedOut) {
+                                      NSLog(@"CurrentLocation -> (%f,%f)", currentLocation.coordinate.latitude, currentLocation.coordinate.longitude);
+                                  }
+                                  else {
+                                   
+                                  }
+                                  
+                                  strongSelf.locationRequestID = NSNotFound;
+                              }];
+}
 - (void)loadVenues
 {
-    NSString *latLon = @"40.721405,-73.793197"; // approximate latLon of The Mothership (a.k.a Apple headquarters)
+    NSString *latLon = @"40.721405,-73.793197";
+    //NSString *latLon = self.latLongCurrent;
+    // approximate latLon of The Mothership (a.k.a Apple headquarters)
     NSString *clientID = kCLIENTID;
     NSString *clientSecret = kCLIENTSECRET;
+    
+   
+     latLon = [NSString stringWithFormat:@"%@", self.latLongCurrent];
+     NSLog(@"latLon -> %@",self.latLongCurrent);
     
     NSDictionary *queryParams = @{@"ll" : latLon,
                                   @"client_id" : clientID,
@@ -128,6 +185,27 @@
 {
     // Return NO if you do not want the specified item to be editable.
     return YES;
+}
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender{
+    if([segue.identifier isEqualToString:@"showDetail"]){
+        
+        
+        NSIndexPath *indexPath = [self.tableView indexPathForSelectedRow];
+        Venue *venue = _venues[indexPath.row];
+        DetailViewController *destViewController = segue.destinationViewController;
+        destViewController.titleName = venue.name;
+        destViewController.lat = [venue.location.lat doubleValue];
+        destViewController.longitude = [venue.location.lng doubleValue];
+        destViewController.checkins = [venue.stats.checkins stringValue];
+        destViewController.users = [venue.stats.users stringValue];
+        destViewController.tips = [venue.stats.tips stringValue];
+        destViewController.distance = venue.location.distance;
+        destViewController.address = venue.location.address;
+        destViewController.crossStreet = venue.location.crossStreet;
+        destViewController.city = venue.location.city;
+        destViewController.postalCode = venue.location.postalCode;
+        
+    }
 }
 
 /*

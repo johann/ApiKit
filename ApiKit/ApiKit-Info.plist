@@ -40,6 +40,8 @@
 			<false/>
 		</dict>
 	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This string is required to gain permission to access location services on iOS 8+ and should describe how your app uses location services. Set this string in the Info.plist</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
