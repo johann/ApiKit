@@ -82,8 +82,8 @@
     
     MKPointAnnotation *point = [[MKPointAnnotation alloc] init];
     point.coordinate = zoomLocation;
-    point.title = titleName;
-    point.subtitle = @"help help help";
+    //point.title = titleName;
+    //point.subtitle = @"";
     MKPinAnnotationView *pointPin = [[MKPinAnnotationView alloc] init];
     pointPin.annotation = point;
     pointPin.canShowCallout = true;
@@ -108,5 +108,6 @@
     // Pass the selected object to the new view controller.
 }
 */
+
 
 @end
